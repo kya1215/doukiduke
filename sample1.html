@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="author" content="takuyagoto">
+    <title>Sample 1</title>
+    <link rel="stylesheet" type="text/css" href="css/style.css">
+    <!--&#91;if lt IE 9&#93;>
+  <script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+  <!&#91;endif&#93;-->
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+    <script src="js/modal.js"></script>
+</head>
+<script>
+    /**
+     * 定数宣言
+     */
+    var NET_REVIEW = 2.0; // 加味する最低レビュー値
+    var NO_RECOMMEND_ITEM = 2; // 推薦するアイテム数
+
+    var matrix; // 評価Matrix
+    var itemList; // ラーメン店のリスト
+
+    // 初期データ:
+    // userId : {itemId:評価値}
+    matrix = {
+        1: {
+            1: 3.0,
+            2: 2.0,
+            3: 1.0,
+            4: 4.0,
+            5: 0.0
+        }, // User1の評価値
+        2: {
+            1: 4.0,
+            2: 2.0,
+            3: 1.0,
+            4: 0.0,
+            5: 5.0
+        }, // User2の評価値
+        3: {
+            1: 2.0,
+            2: 2.0,
+            3: 2.0,
+            4: 4.0,
+            5: 0.0
+        }, // User3の評価値
+        4: {
+            1: 0.0,
+            2: 3.0,
+            3: 4.0,
+            4: 3.0,
+            5: 0.0
+        }, // User4の評価値
+        5: {
+            1: 0.0,
+            2: 0.0,
+            3: 0.0,
+            4: 0.0,
+            5: 4.0
+        }
+    }; // User5の評価値
+
+    // itemId: {
+    //    "title" : "店名",
+    //    "key" : "value"
+    //  }
+    itemList = {
+        1: {
+            "title": "駒鉄"
+        },
+        2: {
+            "title": "山手ラーメン"
+        },
+        3: {
+            "title": "千里眼"
+        },
+        4: {
+            "title": "砦"
+        },
+        5: {
+            "title": "侍"
+        }
+    };
+
+    /**
+     * User-Item Matrixからレビュー値がNET_RVIEW以上のものを1としそれ以外は0として返すメソッド
+     * @property {Object} _matrix {userId: {itemId: review}}
+     * @return {Object} binarizedMatrix {userId: {itemId: 1.0}}
+     */
+    function binarize(_matrix) {
+        var binarizedMatrix = {};
+        var userIds = Object.keys(_matrix);
+        for (var i = 0; i < userIds.length; i++) {
+            var userId = userIds[i];
+            var binaries = {};
+            var count = 0;
+            var reviews = _matrix[userId];
+            var itemIds = Object.keys(reviews);
+            for (var j = 0; j < itemIds.length; j++) {
+                var itemId = itemIds[j];
+                // TODO::レビュー値は文字列で入っているが数値でない場合（A, B, Cなど)は数値に対応付ける必要あり
+                var review = Number(reviews[itemId]);
+                if (review >= NET_REVIEW) {
+                    count++;
+                    binaries[itemId] = 1.0;
+                }
+            }
+            // 今回は共起の数をカウントするため2つ以上のitemを評価していないものはあらかじめ捨てる
+            if (count > 1) {
+                binarizedMatrix[userId] = binaries;
+            }
+        }
+        return binarizedMatrix;
+    }
+
+    /**
+     * 二値化されたUser-Item Matrixのアイテム方向の共起を数えてItem-Item Matrixを返すメソッド
+     * @property {Object} _matrix {userId: {itemId: value}}
+     * @return {Object} collaborativeMatrix {itemId: {itemId: count}}
+     */
+    function countCollaborative(_matrix) {
+        var collaborativeMatrix = {};
+        var userIds = Object.keys(_matrix);
+        for (var i = 0; i < userIds.length; i++) {
+            var userId = userIds[i];
+            var itemIds = Object.keys(_matrix[userId]);
+            for (var n = 0; n < itemIds.length; n++) {
+                var rowItemId = itemIds[n];
+                var collaborativeRow = {};
+                if (rowItemId in collaborativeMatrix) {
+                    collaborativeRow = collaborativeMatrix[rowItemId];
+                }
+                for (var m = 0; m < itemIds.length; m++) {
+                    var colItemId = itemIds[m];
+                    if (colItemId == rowItemId) {
+                        continue;
+                    }
+                    if (colItemId in collaborativeRow) {
+                        collaborativeRow[colItemId]++;
+                    } else {
+                        collaborativeRow[colItemId] = 1;
+                    }
+                }
+                collaborativeMatrix[rowItemId] = collaborativeRow;
+            }
+        }
+        return collaborativeMatrix;
+    }
+
+    /**
+     * 共起の数が格納されたItem-Item Matrixをその共起の確率のItem-Item Matrixを返すメソッド
+     * @property {Object} _matrix {itemId: {itemId: count}}
+     * @return {Object} probMatrix {itemId: {itemId: probability}}
+     */
+    function calcProbability(_matrix) {
+        var probMatrix = {};
+        var itemIds = Object.keys(_matrix);
+        for (var n = 0; n < itemIds.length; n++) {
+            var rowItemId = itemIds[n];
+            var itemRow = _matrix[rowItemId];
+            var sum = 0;
+            colItemIds = Object.keys(itemRow);
+            for (var m = 0; m < colItemIds.length; m++) {
+                var colItemId = colItemIds[m];
+                sum += itemRow[colItemId];
+            }
+            if (sum < 1) {
+                continue;
+            }
+            for (var m = 0; m < colItemIds.length; m++) {
+                var colItemId = colItemIds[m];
+                itemRow[colItemId] = itemRow[colItemId] / sum;
+            }
+            probMatrix[rowItemId] = itemRow;
+        }
+        return probMatrix;
+    }
+
+    /**
+     * 共起確率の高いItemを確率の高い順に指定数返す。指定数を超えて同率があった場合はランダムで返す。
+     * @property {Object} probabilities {itemId: probability}
+     * @property {number} returnCount
+     * @return {Array} recommendList
+     */
+    function recommendByRank(probabilities, returnCount) {
+        var recommendList = [];
+        var arr = [];
+        var itemIds = Object.keys(probabilities);
+        // Array.sortを使えるように[{item: ItemId, value: probability}]の配列に置き換える
+        for (var i = 0; i < itemIds.length; i++) {
+            var itemId = itemIds[i];
+            arr.push({
+                item: itemId,
+                value: probabilities[itemId]
+            });
+        }
+        arr.sort(function(obj1, obj2) {
+            var val1 = obj1.value;
+            var val2 = obj2.value;
+            if (val1 > val2) return -1;
+            if (val1 < val2) return 1;
+            return 0;
+        });
+        // 共起アイテム数が指定数以下だった場合はあるだけ返す。
+        if (arr.length <= returnCount) {
+            for (var i = 0; i < arr.length; i++) {
+                var obj = arr[i];
+                recommendList.push(obj.item);
+            }
+            return recommendList;
+        }
+        // 指定数内に同率がない場合は指定数分返す。
+        if (arr[returnCount - 1].value > arr[returnCount].value) {
+            for (var i = 0; i < returnCount; i++) {
+                recommendList.push(arr[i].item);
+            }
+            return recommendList;
+        }
+        var sameProb = arr[returnCount - 1].value;
+        var i = 0;
+        while (arr[i].value > sameProb) {
+            recommendList.push(arr[i++].item);
+        }
+        var sameProbItems = [];
+        while (i < arr.length && arr[i].value == sameProb) {
+            sameProbItems.push(arr[i++].item);
+        }
+        while (recommendList.length < returnCount) {
+            var randIndex = Math.floor(Math.random() * sameProbItems.length);
+            recommendList.push(sameProbItems.splice(randIndex, 1)[0]);
+        }
+        return recommendList;
+    }
+
+    // $で始まる部分はjQueryというJavascriptを簡潔に記述するためのライブラリを使用している部分です。
+
+    function createItemList() {
+        var itemIds = Object.keys(itemList);
+        for (var i = 0; i < itemIds.length; i++) {
+            var itemId = itemIds[i];
+            var item = itemList[itemId];
+            var li = document.createElement("li");
+            li.className = "movie_item";
+            li.id = itemId;
+            li.innerHTML = item.title;
+            document.getElementById("movie_list").appendChild(li);
+        };
+    }
+
+    function createModalWindow(selectMovieId, recommendList) {
+        document.getElementById("select_movie").innerHTML = itemList[selectMovieId].title;
+        document.getElementById("recommend_list").innerHTML = "";
+        if (recommendList.length == 0) {
+            $("#recommend_list").append("データがありません。");
+            return;
+        }
+        for (var i = 0; i < recommendList.length; i++) {
+            var itemId = recommendList[i];
+            var li = document.createElement("li");
+            li.innerHTML = itemList[itemId].title;
+            document.getElementById("recommend_list").appendChild(li);
+        }
+    }
+
+    $(function() {
+        // Step 1
+        matrix = binarize(matrix);
+        // Step 2
+        matrix = countCollaborative(matrix);
+        // Step 3
+        matrix = calcProbability(matrix);
+
+        createItemList();
+
+        // Step 4
+        $(document).on("click", ".movie_item", function() {
+            // クリックされた要素のidを取得
+            var item_id = $(this).attr("id");
+            var recommendList = [];
+            if (item_id in matrix) {
+                recommendList = recommendByRank(matrix[item_id], NO_RECOMMEND_ITEM);
+            }
+            createModalWindow(item_id, recommendList);
+            showModalWindow();
+        });
+
+        $(document).on("click", "#modal_close,#modal_overlay", function() {
+            hideModalWindow();
+        });
+
+        $(window).on("load resize", function() {
+            centeringModalSyncer();
+        });
+
+    });
+</script>
+
+<body>
+    <div id="modal_content">
+        <span id="modal_close">×&nbsp;close</span>
+        <p>
+            <span id="select_movie"></span>を選んだあなたへのおすすめのラーメン屋
+        </p>
+        <ol id="recommend_list"></ol>
+    </div>
+    <h2>Collaborative Filtering Sample 1</h2>
+    <ul id="movie_list"></ul>
+</body>
+
+</html>
