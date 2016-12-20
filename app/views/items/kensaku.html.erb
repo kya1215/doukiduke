@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>参考書</title>
+  <link rel="stylesheet" type="text/css" href="http://yui.yahooapis.com/3.18.1/build/cssreset/cssreset-min.css">
+  <link rel="stylesheet" href="mycss.css">
+  <%= stylesheet_link_tag "myscc", :media => "all" %>
+
+</head>
+<body>
+  <div id="container">
+  <div id="header">
+    <div id="title">
+      <h1>参考書選びから</h1>
+      <h1>勉強スケジュールまで！</h1>
+    </div>
+    <div id="title_image">
+      <h1><%= image_tag 'icon.png' , :width => '100', :height => '100'%></h1>
+    </div>
+  </div><!-- #header -->
+  <div id="main">
+    <div id="contents">
+      <h2>完全無料</h2>
+      <h2>・当サイトのポイント</h2>
+        <h3>1)あなたにピッタリな参考書がわかる！</h3>
+          <p>たった5つの項目を入力するだけで、あなたにピッタリの参考書をお教えします。</p>
+        <h3>2)あなたに合った勉強スケジュールがわかる！</h3>
+          <p>受験までの残り日数と今の偏差値から、勉強のペース配分をお教えします。</p>
+    </div>
+    <div id="contents_image">
+      <h1><%= image_tag "content_image.png", :height => "225", :width => "300" %></h1>
+    </div>
+    <div id="form">
+      <div class="category">
+        <form action="" method="post">
+          <p>学年</p>
+          <p>
+            <select name="year">
+              <option value="first">高１</option>
+              <option value="second">高２</option>
+              <option value="third">高３</option>
+            </select>
+          </p>
+        </form>
+      </div>
+      <div class="category">
+        <form action="" method="post">
+          <p>文理</p>
+          <p>
+            <select name="type">
+              <option value="arts">文系</option>
+              <option value="science">理系</option>
+            </select>
+          </p>
+        </form>
+      </div>
+      <div class="category">
+        <form action="" method="post">
+          <p>志望大学</p>
+          <p>
+            <select name="university">
+              <option value="todai">東大・京大・医学部</option>
+              <option value="sokei">早慶・国公立非医</option>
+              <option value="march">MARCHレベル</option>
+              <option value="other">その他</option>
+            </select>
+          </p>
+        </form>
+      </div>
+      <div class="category">
+        <form action="" method="post">
+          <p>現在の偏差値</p>
+          <p>
+            <select name="deviation">
+              <option value="-40">〜４０</option>
+              <option value="41-50">４１〜５０</option>
+              <option value="51-60">５１〜６０</option>
+              <option value="61-70">６１〜７０</option>
+              <option value="71-">７１〜</option>
+            </select>
+          </p>
+        </form>
+      </div>
+      <div class="category">
+        <form action="" method="post">
+          <p>1日の学習時間</p>
+          <p>
+            <select name="time">
+              <option value="-1">１時間未満</option>
+              <option value="1-2">１〜２時間</option>
+              <option value="2-3">２〜３時間</option>
+              <option value="3-">３〜４時間</option>
+            </select>
+          </p>
+      </div>
+      <form action="" method="post">
+          <div class="search">
+            <button type="submit"  id="search">検索</button>
+          </div>
+      </form>
+    </div>
+  </div><!-- #main -->
+  <div id="footer">Copylight</div>
+  </div><!-- container -->
+</body>
+</html>
